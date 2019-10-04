@@ -39,6 +39,7 @@
     "copy-dir": "0.0.8",
     "graphql": "^0.2.5",
     "inquirer": "^0.9.0",
+    "js-sql-parser": "^1.2.0",
     "knex": "^0.8.6",
     "lodash": "^3.10.0",
     "mkdirp": "^0.5.1",
@@ -46,7 +47,6 @@
     "pg": "^4.4.1",
     "pluralize": "^1.1.2",
     "recast": "^0.10.26",
-    "sqlite3": "^3.1.0",
     "yargs": "^3.15.0"
   },
   "devDependencies": {
