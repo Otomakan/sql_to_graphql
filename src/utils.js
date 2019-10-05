@@ -16,14 +16,18 @@ const strip = (string, iterations) => {
 }
 
 const shave = (string) => {
-  const quoteOrPar =  new RegExp(/\'|\"|\(|\)/)
+  const quoteOrPar =  new RegExp(/\'|\"|\(|\)|\`/)
   if(string[0].match(quoteOrPar) && string[string.length-1].match(quoteOrPar)){
     return shave(strip(string))
   }
   return string
 }
+const capitalize = (string) => {
+  return string.charAt(0).toUpperCase() + string.substr(1, string.length-1)
+}
 module.exports  = {
   snakeToCamel, 
   strip,
-  shave
+  shave,
+  capitalize
 }

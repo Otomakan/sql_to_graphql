@@ -46,7 +46,7 @@ const interpretConstraintStatement =  (statement, ast) => {
       const referencedTable  = shave(statement[referenceIndex+1])
       const referencedColumn = shave(statement[referenceIndex+2])
       // constraints
-      ast.columns[columnName].constraints.foreignKey = {
+        ast.columns[columnName].constraints.foreignKey = {
         referencedColumn,
         referencedTable
       }
@@ -56,7 +56,9 @@ const interpretConstraintStatement =  (statement, ast) => {
   return ast
 }
 const parseCreateTable = (queryString) => {
-  const match =  queryString.match(/CREATE TABLE\s\'([a-z\-\_]+)[\s\S]*?\(([\s\S]*)?\n\)([\s\S]*?)\|/m)
+  // const match =  queryString.match(/CREATE TABLE\s\'([a-z\-\_]+)[\s\S]*?\(([\s\S]*)?\n\)([\s\S]*?)\|/m)
+  try{
+  const match =  queryString.match(/CREATE TABLE\s\`([a-z\-\_]+)[\s\S]*?\(([\s\S]*)?\n\)/m)
   let rawTableDescription = match[2]
   const tableName = match[1]
   let allRowsRawDescriptions = []
@@ -72,7 +74,13 @@ const parseCreateTable = (queryString) => {
 
   for (var i = 0; i < rawTableDescription.length; i++) {
     let currentChar = rawTableDescription.charAt(i)
-    if(currentChar==',' || i === rawTableDescription.length -1){
+    if(currentChar==',' ){ 
+      if( rawTableDescription[i+1].match(/\n|\r/)){
+      allRowsRawDescriptions.push(breakUpSentence(currentSentence, finalAST))
+      currentSentence = ''
+      }
+    }
+    else if (i === rawTableDescription.length -1){
       allRowsRawDescriptions.push(breakUpSentence(currentSentence, finalAST))
       currentSentence = ''
     }
@@ -81,6 +89,11 @@ const parseCreateTable = (queryString) => {
     }
   }
   return finalAST
+}
+  catch(e) {
+    console.log('failed qs: ')
+    throw e
+  }
 }
 
 const breakUpSentence = (rawSentence, final) => {
@@ -91,8 +104,8 @@ const breakUpSentence = (rawSentence, final) => {
    let newEntry  = {
     rawStatements :[]
    }
-   if( match[0][0] === '\'') {
-     const columnName = shave(match[0].substr(0, match[0].length), 1)
+   if( match[0][0] === '\`') {
+     const columnName = shave(match[0])
      newEntry.type =  match[1]
      newEntry.rawStatements.push(rawSentence)
      newEntry.constraints = checkConstraints(match)
@@ -102,7 +115,11 @@ const breakUpSentence = (rawSentence, final) => {
      else {
        newEntry.isNull = false
      }
-     
+     if(columnName == 'user_id`'){
+       console.log("USER ID FAIL")
+      console.log(rawSentence)
+      console.log(match)
+     }
      final.columns[columnName] = newEntry
    }
    else if (match[0] == 'KEY') {

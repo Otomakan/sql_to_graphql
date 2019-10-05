@@ -73,10 +73,7 @@
 
       // As well as postgres enums
       case 'USER-DEFINED':
-          return {
-              type: 'enum',
-              values: getEnumValueMap(col)
-          };
+          return 'enum'
       default:
           console.log(col);
           throw new Error('Type "' + col.dataType + '" not recognized');

@@ -1,9 +1,8 @@
 const sqlToGraphQlType = require('./columnToObjects').sqlToGraphQlType
-const snakeToCamel = require('./utils').snakeToCamel
+const {snakeToCamel, capitalize} = require('./utils')
+const buildRootSchema = require('./buildRootSchema')
+
 const foreignKeyString = (columnName, referencedTable, referencedColumn, dbName) => {
-  
- 
-    // const {referencedColumn, referencedTable} = description.constraints.foreignKey
     const camelColumnName = snakeToCamel(columnName)
     const fieldName = snakeToCamel(referencedTable) + 's'
     
@@ -46,6 +45,7 @@ const foreignKeyString = (columnName, referencedTable, referencedColumn, dbName)
     `
 }
 const convertTreeToQLObjectType = (tree, dbName) => {
+  try{
   // const tree
   const allColumnsName = Object.keys(tree.columns)
   const camelTableName = snakeToCamel(tree.tableName)
@@ -127,8 +127,17 @@ fields: ()=> ({
   }
 
   return allImports + finalString
+
+  }
+  catch(e){
+    console.log(tree)
+    console.log(e)
+    throw e
+  }
 }
 
+
 module.exports = {
-  convertTreeToQLObjectType
+  convertTreeToQLObjectType,
+  buildRootSchema
 }
