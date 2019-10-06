@@ -1,11 +1,13 @@
+import { resolve } from 'path'
 
+import { config } from 'dotenv'
+
+config({ path: resolve(__dirname, '../.env') })
 import express from 'express'
 import compression from 'compression'  // compresses requests
 import cors from 'cors'
-import authentificationMiddleware from './middlewares/authentification'
 
 import schema from './schema'
-require('dotenv').config()
 var flash = require('connect-flash')
 var graphqlHTTP = require('express-graphql')
 
@@ -16,9 +18,6 @@ app.set('port', process.env.PORT || 3000)
 app.use(cors(
     // corsOptions
 ))
-app.use(flash())
-
-app.use(compression())
 
 
 app.use('/graphql', graphqlHTTP({

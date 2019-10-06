@@ -3,7 +3,6 @@ import util from 'util'
 
 // const create
 // class pool
-console.log(process.env.DB_NAME)
 const pool = mysql.createPool({
     host : `${process.env.DB_HOST}`,
     user : `${process.env.DB_USER}`,
@@ -23,8 +22,6 @@ pool.getConnection((err, connection) => {
             console.error('Database connection was refused.')
         }
         console.error('error connecting')
-        console.log(err)
-        console.log( `${process.env.DB_USER}`)
     }
     if (connection) connection.release()
     return

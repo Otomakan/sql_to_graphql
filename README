@@ -1,0 +1,1 @@
+yarn add mysql graphql express compression cors express-graphql tsc concurrently

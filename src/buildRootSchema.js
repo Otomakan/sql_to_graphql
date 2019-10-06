@@ -1,9 +1,9 @@
+const {snakeToCamel, capitalize} = require('./utils')
 
 const buildRootSchema = (ast) => {
   
   let finalString = `
-import {  GraphQLSchema, GraphQLObjectType, GraphQLInt, GraphQLString, GraphQLEnum} from 'graphql'
-import pool from '../db/pool'
+import {  GraphQLSchema, GraphQLObjectType, GraphQLInt, GraphQLString} from 'graphql'
 
 const snakeToCamel = (str: string) => str.replace(
     /([-_][a-z])/g,
@@ -20,8 +20,7 @@ const queryType = new GraphQLObjectType({
 
   ast.forEach(tree => {
     allImports.push(`
-import { ${capitalize(snakeToCamel(tree.tableName))} } from './graphql/${snakeToCamel(tree.tableName)}'
-`)
+import { ${capitalize(snakeToCamel(tree.tableName))} } from './graphql/${snakeToCamel(tree.tableName)}'`)
 
     finalString += `
       ${snakeToCamel(tree.tableName)} : ${capitalize(snakeToCamel(tree.tableName))},`
@@ -31,13 +30,11 @@ import { ${capitalize(snakeToCamel(tree.tableName))} } from './graphql/${snakeTo
 })
 
 export default new GraphQLSchema({query: queryType});`
-console.log(allImports)
   allImportsString = ''
   allImports.forEach(importStatement => {
     // console.log(importStatement)
     allImportsString += importStatement
   })
-  console.log(allImportsString+ finalString)
   return  allImportsString+ finalString
 }
 module.exports = buildRootSchema

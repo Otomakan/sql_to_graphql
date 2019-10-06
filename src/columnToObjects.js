@@ -91,7 +91,7 @@
     case 'boolean':
       return 'GraphQLBool'
     case 'enum':
-        return 'GraphQLEnum'
+        return 'GraphQLString'
     default :
       return 'Shit error'
   }

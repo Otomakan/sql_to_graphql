@@ -1,4 +1,5 @@
 const shave = require('./utils').shave
+const util = require('util')
 
 const checkConstraints = (columnDefinition) => {
   const constraints = {
@@ -58,7 +59,7 @@ const interpretConstraintStatement =  (statement, ast) => {
 const parseCreateTable = (queryString) => {
   // const match =  queryString.match(/CREATE TABLE\s\'([a-z\-\_]+)[\s\S]*?\(([\s\S]*)?\n\)([\s\S]*?)\|/m)
   try{
-  const match =  queryString.match(/CREATE TABLE\s\`([a-z\-\_]+)[\s\S]*?\(([\s\S]*)?\n\)/m)
+  const match =  queryString.match(/CREATE TABLE\s\`([a-z0-9\-\_]+)[\s\S]*?\(([\s\S]*)?\n\)/m)
   let rawTableDescription = match[2]
   const tableName = match[1]
   let allRowsRawDescriptions = []
@@ -102,7 +103,9 @@ const breakUpSentence = (rawSentence, final) => {
    //  match.shift()
    // final.components = match
    let newEntry  = {
-    rawStatements :[]
+    rawStatements :[],
+    referencedBy: [],
+
    }
    if( match[0][0] === '\`') {
      const columnName = shave(match[0])
@@ -114,11 +117,6 @@ const breakUpSentence = (rawSentence, final) => {
      }
      else {
        newEntry.isNull = false
-     }
-     if(columnName == 'user_id`'){
-       console.log("USER ID FAIL")
-      console.log(rawSentence)
-      console.log(match)
      }
      final.columns[columnName] = newEntry
    }
@@ -137,7 +135,34 @@ const breakUpSentence = (rawSentence, final) => {
   return final
  }
 
+
+const addReferenced = (allTables) => {
+
+  Object.keys(allTables).forEach(tableName=>{
+    const table = allTables[tableName]
+    const {columns} = table
+    const allKeys = Object.keys(columns)
+
+    Object.keys(columns).forEach(columnName => {
+      const column = columns[columnName]
+      const { constraints } = column
+      const {foreignKey} = constraints
+      if (foreignKey!==false){
+        const {referencedTable, referencedColumn} = foreignKey
+        allTables[referencedTable].columns[referencedColumn].referencedBy.push({
+          table: tableName,
+          column: columnName
+        })
+      }
+    })
+
+  })
+
+  return allTables
+}
+
  
 module.exports = {
-  parseCreateTable
+  parseCreateTable,
+  addReferenced
 }

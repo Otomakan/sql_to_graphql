@@ -1,9 +1,10 @@
 // const util = require('util')
 const util = require('util')
-const {parseCreateTable} = require('./tableParser')
+const {parseCreateTable, addReferenced} = require('./tableParser')
 const {convertTreeToQLObjectType, buildRootSchema} = require('./astToGraphqlStatement')
 const mysql = require('mysql')
 const fs = require('fs')
+const  {snakeToCamel} = require('./utils')
 require('dotenv').config()
 
 const pool = mysql.createPool({
@@ -18,12 +19,18 @@ const allTables = []
 pool.query = util.promisify(pool.query)
 
 
-async function main(){
+async function main(destinationFile){
 
 try {
-  const allTableTrees = []
-  if (!fs.existsSync(__dirname + `/../dist/graphql`)){
-    fs.mkdirSync(__dirname + `/../dist/graphql`)
+  const allTablesTree = {tables:{},}
+  if (!fs.existsSync(destinationFile + ``)){
+    fs.mkdirSync(destinationFile + ``)
+  }
+  if (!fs.existsSync(destinationFile + `/src`)){
+    fs.mkdirSync(destinationFile + `/src`)
+  }
+  if (!fs.existsSync(destinationFile + `/src/graphql`)){
+    fs.mkdirSync(destinationFile + `/src/graphql`)
   }
   const res  = await pool.query('show tables')
   res.forEach(element => {
@@ -37,13 +44,57 @@ try {
       const tableDescription = createTableResponse[0]['Create Table']
       // console.log(tableDescription)
       const parsedTable = parseCreateTable(tableDescription)
-      allTableTrees.push(parsedTable)
+      allTablesTree.tables[tableName] = parsedTable
       // console.log('parsedTable')
       // console.log(parsedTable)
-      const result = convertTreeToQLObjectType(parsedTable, process.env.DB_NAME)
-      // console.log(result)
-      fs.writeFile(__dirname + `/../dist/graphql/${tableName}.ts`, result, function (err) {
-        resolve()
+      resolve()
+    })
+  })
+  
+
+  if (!fs.existsSync(destinationFile + `/src/db`)){
+    fs.mkdirSync(destinationFile + `/src/db`)
+  }
+  fs.writeFile(destinationFile + `/src/app.ts`, fs.readFileSync(__dirname +'/sourceFiles/app.ts'), ()=>{
+    console.log('written')
+  })
+  fs.writeFile(destinationFile + `/src/server.ts`, fs.readFileSync(__dirname +'/sourceFiles/server.ts'), ()=>{
+    console.log('written')
+  })
+  
+  fs.writeFile(destinationFile + `/src/db/pool.ts`, fs.readFileSync(__dirname +'/sourceFiles/pool.ts'), ()=>{
+    console.log('written')
+  })
+  fs.writeFile(destinationFile + `/package.json`, fs.readFileSync(__dirname +'/sourceFiles/package.json'), ()=>{
+    console.log('written')
+  })
+  fs.writeFile(destinationFile + `/tsconfig.json`, fs.readFileSync(__dirname +'/sourceFiles/tsconfig.json'), ()=>{
+    console.log('written')
+  })
+  const dotenvData = `
+    DB_HOST=${process.env.DB_HOST}
+    DB_USER=${process.env.DB_USER}
+    DB_PASSWORD=${process.env.DB_PASSWORD}
+    DB_NAME=${process.env.DB_NAME}
+  `
+  fs.writeFile(destinationFile + `/.env`, dotenvData, ()=>{
+    console.log('written')
+  })
+
+  Promise.all(tableRequests).then(() => {
+    let schemaString = buildRootSchema(Object.values(allTablesTree.tables))
+    fs.writeFile(destinationFile + `/src/schema.ts`, schemaString, ()=>{
+      console.log('written')
+    })
+    allTablesTree.tables = addReferenced(allTablesTree.tables)
+    
+    Object.keys(allTablesTree.tables).forEach(tableName => {
+      if(tableName == 'user'){
+        console.log(allTablesTree.tables[tableName].columns.id)
+      }
+      const parsedTable = allTablesTree.tables[tableName]
+      const result = convertTreeToQLObjectType(parsedTable, process.env.DB_NAME, allTables)
+      fs.writeFile(destinationFile + `/src/graphql/${snakeToCamel(tableName)}.ts`, result, function (err) {
 
         if (err) {
           throw err
@@ -51,28 +102,7 @@ try {
         console.log("It's saved!")  
       })
     })
-  })
-  
-
-  if (!fs.existsSync(__dirname + `/../dist/db`)){
-    fs.mkdirSync(__dirname + `/../dist/db`)
-  }
-  fs.writeFile(__dirname + `/../dist/app.ts`, fs.readFileSync(__dirname +'/sourceFiles/app.ts'), ()=>{
-    console.log('written')
-  })
-  fs.writeFile(__dirname + `/../dist/server.ts`, fs.readFileSync(__dirname +'/sourceFiles/app.ts'), ()=>{
-    console.log('written')
-  })
-  
-  fs.writeFile(__dirname + `/../dist/db/pool.ts`, fs.readFileSync(__dirname +'/sourceFiles/pool.ts'), ()=>{
-    console.log('written')
-  })
-
-  Promise.all(tableRequests).then(() => {
-    let schemaString = buildRootSchema(allTableTrees)
-    fs.writeFile(__dirname + `/../dist/schema.ts`, schemaString, ()=>{
-      console.log('written')
-    })
+    
     pool.end()
   })
   .catch((e)=>{console.log(e)})
@@ -84,37 +114,10 @@ catch(e){
   // console.log('blo')
 }
 
-
-// const testQS  = `
-// +-------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-// | Table       | Create Table                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-// +-------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-// | user_widget | CREATE TABLE 'user_widget' (
-//   'id' bigint(20) NOT NULL AUTO_INCREMENT,
-//   'user_id' bigint(20) NOT NULL,
-//   'xpos' int(2) NOT NULL,
-//   'ypos' int(2) NOT NULL,
-//   'widget_type' varchar(50) NOT NULL,
-//   'settings' text  NULL,
-//   PRIMARY KEY ('id'),
-//   KEY 'user_id' ('user_id'),
-//   KEY 'widget_type' ('widget_type'),
-//   CONSTRAINT 'user_widget_ibfk_1' FOREIGN KEY ('user_id') REFERENCES 'user' ('id') ON DELETE CASCADE ON UPDATE CASCADE
-// ) ENGINE=InnoDB AUTO_INCREMENT=401 DEFAULT CHARSET=latin1 COMMENT='Widget configuration for user' |
-// +-------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+`
-
-
-
-
-// const parsedTable = parseCreateTable(testQS)
-// console.log(util.inspect(parsedTable, false, null, true /* enable colors */))
-// // /convertTreeToQLObjectType(parsedTable)/convertTreeToQLObjectType(parsedTable)
-// const result = convertTreeToQLObjectType(parsedTable, 'mmp_generic')
-// console.log(result)
 }
 
 main = util.promisify(main)
- main().then(()=>{
+ main(__dirname + '/../../generatedApi').then(()=>{
    console.log('dne')
   pool.end()
 
