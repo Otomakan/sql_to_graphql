@@ -12,7 +12,7 @@ const snakeToCamel = (str: string) => str.replace(
         .replace('_', '')
 )
 
-const queryType = new GraphQLObjectType({
+const queryType = new  GraphQLObjectType({
   name: 'Query',
   fields: {
   `
@@ -20,10 +20,11 @@ const queryType = new GraphQLObjectType({
 
   ast.forEach(tree => {
     allImports.push(`
-import { ${capitalize(snakeToCamel(tree.tableName))} } from './graphql/${snakeToCamel(tree.tableName)}'`)
+import { ${capitalize(snakeToCamel(tree.tableName))}, ${capitalize(snakeToCamel(tree.tableName))}s } from './graphql/${snakeToCamel(tree.tableName)}'`)
 
     finalString += `
-      ${snakeToCamel(tree.tableName)} : ${capitalize(snakeToCamel(tree.tableName))},`
+      ${snakeToCamel(tree.tableName)} : ${capitalize(snakeToCamel(tree.tableName))},
+      ${snakeToCamel(tree.tableName)}s : ${capitalize(snakeToCamel(tree.tableName))}s,`
   })
   finalString += `
   }

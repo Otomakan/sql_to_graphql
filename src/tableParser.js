@@ -1,5 +1,4 @@
 const shave = require('./utils').shave
-const util = require('util')
 
 const checkConstraints = (columnDefinition) => {
   const constraints = {
@@ -11,7 +10,7 @@ const checkConstraints = (columnDefinition) => {
     default:''
   }
   
-  if(columnDefinition.includes('NULL') ) {
+  if (columnDefinition.includes('NULL') ) {
     const indexOfNull = columnDefinition.indexOf('NULL')
     if (columnDefinition[indexOfNull-1] === 'NOT') {
       constraints.isNull = false
@@ -136,7 +135,7 @@ const breakUpSentence = (rawSentence, final) => {
  }
 
 
-const addReferenced = (allTables) => {
+const addReferencedBy = (allTables) => {
 
   Object.keys(allTables).forEach(tableName=>{
     const table = allTables[tableName]
@@ -164,5 +163,5 @@ const addReferenced = (allTables) => {
  
 module.exports = {
   parseCreateTable,
-  addReferenced
+  addReferencedBy
 }

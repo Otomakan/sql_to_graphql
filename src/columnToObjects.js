@@ -75,7 +75,6 @@
       case 'USER-DEFINED':
           return 'enum'
       default:
-          console.log(col);
           throw new Error('Type "' + col.dataType + '" not recognized');
   }
 }

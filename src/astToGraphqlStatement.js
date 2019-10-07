@@ -21,7 +21,7 @@ const getAllReferencer = (columnName, referencedBy, dbName) => {
             description: 'limits the number of groups you can see'
 },`
 
-let resolveFunction = `async function ({id}, {size=0}) {
+let resolveFunction = `async function ({id}:{id?:number}, {size=0}) {
             try{
                 let queryString = 'SELECT * FROM ${dbName}.${referencererTable} WHERE ${referencerColumn}=' + id
                 if (size != 0) {
@@ -102,10 +102,8 @@ const convertTreeToQLObjectType = (tree, dbName) => {
   const tableName = tree.tableName
   const camelTableName = snakeToCamel(tree.tableName)
   //We store this for the imports at the top of the file
-  const allBasicGraphqlTypes = []
+  const allBasicGraphqlTypes = ['GraphQLList','GraphQLInt']
   const allTypesUsed = [camelTableName]
-  let importPool = false
-
 
   let finalString = ''
   // Add all the fields to final String
@@ -115,7 +113,7 @@ const convertTreeToQLObjectType = (tree, dbName) => {
     const { referencedBy } =  description
 
     fieldType = sqlToGraphQlType(description.type.match(/[a-zA-Z0-9]+/)[0])
-    if (!allBasicGraphqlTypes.includes(fieldType) && fieldType != 'GraphQLInt') {
+    if (!allBasicGraphqlTypes.includes(fieldType)) {
       allBasicGraphqlTypes.push(fieldType)
     }
     finalString += `
@@ -124,14 +122,10 @@ const convertTreeToQLObjectType = (tree, dbName) => {
       },
     `
     if(referencedBy.length > 0) {
-        console.log(description)
       referencedBy.forEach(refererObject=>{
         finalString += getAllReferencer(columnName, refererObject, dbName)
         if (!allTypesUsed.includes(snakeToCamel(refererObject.table))) {
           allTypesUsed.push(snakeToCamel(refererObject.table) )
-        }
-        if(!allBasicGraphqlTypes.includes('GraphQLList')){
-          allBasicGraphqlTypes.push('GraphQLList')
         }
 
       })
@@ -143,9 +137,7 @@ const convertTreeToQLObjectType = (tree, dbName) => {
 
 
       importPool = true
-      if (!allBasicGraphqlTypes.includes('GraphQLList')) {
-        allBasicGraphqlTypes.push('GraphQLList')
-      }
+     
 
       finalString += foreignKeyString(fieldName, referencedTable, referencedColumn, dbName)
     
@@ -167,7 +159,7 @@ const snakeToCamel = (str: string) => str.replace(
     .replace('-', '')
     .replace('_', '')
 )
-export const ${camelTableName}Type = new GraphQLObjectType ({
+export const ${camelTableName}Type = new GraphQLObjectType({
 name: '${camelTableName}',
 description: 'a single ${camelTableName}',
 fields: ()=> ({
@@ -191,10 +183,10 @@ export const ${capitalize(camelTableName)}: GraphQLFieldConfig = {
             type: GraphQLInt,
         }
     },
-    resolve: async (_, {id}) => {
+    resolve: async (_ : any, {id}:{id?:number}) => {
         try {
             console.log(id)
-            let queryString = ('SELECT * FROM ${dbName}.${tableName} WHERE id=' + id)
+            let queryString = 'SELECT * FROM ${dbName}.${tableName} WHERE id=' + id
             console.log(queryString)
             const res: any= await pool.query(queryString + ';')
             console.log(res)
@@ -212,20 +204,48 @@ export const ${capitalize(camelTableName)}: GraphQLFieldConfig = {
 }
 `
 
+// Create pluralized GraphqlFieldConfig Object
+finalString += `
+export const ${capitalize(camelTableName)}s: GraphQLFieldConfig = {
+    type: GraphQLList(${camelTableName}Type),
+    description: 'all ${camelTableName}s',
+    resolve: async () => {
+        try {
+            let queryString = 'SELECT * FROM ${dbName}.${tableName}'
+            console.log(queryString)
+            const res: any= await pool.query(queryString + ';')
+            console.log(res)
+            const ${camelTableName}s: any= []
+            res.forEach((${camelTableName}: any)=> {
+                Object.keys(${camelTableName}).forEach((key)=> ${camelTableName}[snakeToCamel(key)] = ${camelTableName}[key]) 
+                ${camelTableName}s.push(${camelTableName})
+            })
+            return  ${camelTableName}s
+        }
+        catch(e){
+            console.log(e)
+        }
+    }
+}
+`
+
   finalString+=`
 export default ${camelTableName}Type
 `
 
-  let allImports = ''
-  let allGraphQLImports = 'import { GraphQLObjectType, GraphQLFieldConfig, GraphQLInt, '
+  let allImports = `import pool from '../db/pool'
+  `
+  let allGraphQLImports = 'import { GraphQLObjectType, GraphQLFieldConfig, GraphQLInt, GraphQLList, '
 
   
   allBasicGraphqlTypes.forEach((type,i)=>{
-    allGraphQLImports += type 
-    if(i<allBasicGraphqlTypes.length-1){
-      allGraphQLImports += ','
+    if(type != 'GraphQLList' &&  type != 'GraphQLInt'){
+      allGraphQLImports += type 
+      if(i<allBasicGraphqlTypes.length-1){
+        allGraphQLImports += ','
+      }
+      allGraphQLImports += ' '
     }
-    allGraphQLImports += ' '
   })
 
   allGraphQLImports+= `} from 'graphql'
@@ -236,23 +256,17 @@ export default ${camelTableName}Type
    allImports += allGraphQLImports
   //  The first type used is the current type so we delete it
    allTypesUsed.shift()
-   allTypesUsed.forEach(type=>{
+   allTypesUsed.forEach(type => {
     allImports += `import { ${snakeToCamel(type)}Type } from './${snakeToCamel(type)}'
     `
 
   })
-  if(importPool){
-    allImports += `
-    import pool from '../db/pool'
-`
-  }
+  
 
   return allImports + finalString
 
   }
   catch(e){
-    // console.log(tree)
-    console.log(e)
     throw e
   }
 }
